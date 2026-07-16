@@ -5,6 +5,8 @@ Write a Python program that can do the following:
 3. Using the print()  Print how much money you have left, after purchasing the item.
 """
 
+# SourceCode
+
 initial_money = 50
 bought_item_price = 15
 tax_percent = 3
