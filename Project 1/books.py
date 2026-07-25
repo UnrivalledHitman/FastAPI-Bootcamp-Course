@@ -48,7 +48,7 @@ async def display_book_category_wise(category: str):
 
 
 # Combining path and query parameters
-@app.get("/books/{bookAuthor}/")
+@app.get("/books/by_author/{bookAuthor}/")
 async def display_books_author_and_category_wise(bookAuthor: str, category: str):
     booksToReturn = []
     for book in books:
@@ -85,9 +85,9 @@ async def update_book_data(updated_book=Body()):
 
 
 # Delete a book data
-@app.delete("/books/delete_book{bookTitle}")
+@app.delete("/books/delete_book/{bookTitle}")
 async def delete_book(bookTitle: str):
     for i in range(len(books)):
         if books[i].get("title", "").casefold() == bookTitle.casefold():
             books.pop(i)
-        break
+            break
