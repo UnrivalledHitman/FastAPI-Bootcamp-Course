@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Body, HTTPException
 
 # Data
 books = [
@@ -65,3 +65,29 @@ async def display_books_author_and_category_wise(bookAuthor: str, category: str)
         )
 
     return booksToReturn
+
+
+# Adding book data
+@app.post("/books/create_book")
+async def create_new_book(new_book=Body()):
+    books.append(new_book)
+
+
+# Updating a book data
+@app.put("/books/update_book")
+async def update_book_data(updated_book=Body()):
+    for i in range(len(books)):
+        if (
+            books[i].get("title", "").casefold()
+            == updated_book.get("title", "").casefold()
+        ):
+            books[i] = updated_book
+
+
+# Delete a book data
+@app.delete("/books/delete_book{bookTitle}")
+async def delete_book(bookTitle: str):
+    for i in range(len(books)):
+        if books[i].get("title", "").casefold() == bookTitle.casefold():
+            books.pop(i)
+        break
