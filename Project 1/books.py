@@ -9,45 +9,38 @@ books = [
     {"title": "Title Five", "author": "Author Five", "category": "Math"},
 ]
 
-# Initializing fastapi
 app = FastAPI()
 
 
-# Showing all the books
+# 1. COMBINED: Show all books OR filter by query parameters
+# Replacing three separate GET "/books" routes
 @app.get("/books")
-async def show_all_books():
-    return books
+async def get_books(authorName: str, category: str):
+    books_to_return = books
 
+    if authorName:
+        books_to_return = [
+            book
+            for book in books_to_return
+            if book.get("author", "").casefold() == authorName.casefold()
+        ]
 
-# Path parameters
-@app.get("/books/{bookTitle}")
-async def show_specific_book(bookTitle: str):
-    for book in books:
-        # casefold for making the search case insensitive
-        if book["title"].casefold() == bookTitle.casefold():
-            return book
-    # If the loop finishes without returning, the book doesn't exist
-    raise HTTPException(status_code=404, detail="Book not found")
+    if category:
+        books_to_return = [
+            book
+            for book in books_to_return
+            if book.get("category", "").casefold() == category.casefold()
+        ]
 
-
-# Query parameters
-@app.get("/books/")
-async def display_book_category_wise(category: str):
-    booksToReturn = []
-    for book in books:
-        if book.get("category", "").casefold() == category.casefold():
-            booksToReturn.append(book)
-
-    # Check if the list is empty
-    if not booksToReturn:
+    if not books_to_return:
         raise HTTPException(
-            status_code=404, detail=f"No books found for category: '{category}'"
+            status_code=404, detail="No books found matching the criteria"
         )
 
-    return booksToReturn
+    return books_to_return
 
 
-# Combining path and query parameters
+# 2. Combining path and query parameters
 @app.get("/books/by_author/{bookAuthor}/")
 async def display_books_author_and_category_wise(bookAuthor: str, category: str):
     booksToReturn = []
@@ -57,23 +50,46 @@ async def display_books_author_and_category_wise(bookAuthor: str, category: str)
             and book.get("category", "").casefold() == category.casefold()
         ):
             booksToReturn.append(book)
-    # Check if the list is empty
+
     if not booksToReturn:
         raise HTTPException(
             status_code=404,
             detail=f"No books found for author '{bookAuthor}' in category '{category}'",
         )
-
     return booksToReturn
 
 
-# Adding book data
+# 3. Path parameter for Author Name (FIXED PATH)
+# /books/author/{authorName} changed to {bookTitle} to prevent conflict
+@app.get("/books/author/{authorName}")
+async def fetch_books_by_authors_path_param(authorName: str):
+    fetchedBooks = []
+    for book in books:
+        if book.get("author", "").casefold() == authorName.casefold():
+            fetchedBooks.append(book)
+
+    if not fetchedBooks:
+        raise HTTPException(status_code=404, detail="Author not found")
+    return fetchedBooks
+
+
+# 4. Path parameter for Book Title
+@app.get("/books/{bookTitle}")
+async def show_specific_book(bookTitle: str):
+    for book in books:
+        if book["title"].casefold() == bookTitle.casefold():
+            return book
+    raise HTTPException(status_code=404, detail="Book not found")
+
+
+# 5. Adding book data
 @app.post("/books/create_book")
 async def create_new_book(new_book=Body()):
     books.append(new_book)
+    return {"message": "Book added"}
 
 
-# Updating a book data
+# 6. Updating a book data
 @app.put("/books/update_book")
 async def update_book_data(updated_book=Body()):
     for i in range(len(books)):
@@ -82,12 +98,15 @@ async def update_book_data(updated_book=Body()):
             == updated_book.get("title", "").casefold()
         ):
             books[i] = updated_book
+            return {"message": "Book updated"}
+    raise HTTPException(status_code=404, detail="Book not found")
 
 
-# Delete a book data
+# 7. Delete a book data
 @app.delete("/books/delete_book/{bookTitle}")
 async def delete_book(bookTitle: str):
     for i in range(len(books)):
         if books[i].get("title", "").casefold() == bookTitle.casefold():
             books.pop(i)
-            break
+            return {"message": "Book deleted"}
+    raise HTTPException(status_code=404, detail="Book not found")
