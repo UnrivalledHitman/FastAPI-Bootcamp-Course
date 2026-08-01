@@ -12,13 +12,15 @@ class Book:
     author: str
     description: str
     rating: int
+    published_date: int
 
-    def __init__(self, id, title, author, description, rating):
+    def __init__(self, id, title, author, description, rating, published_date):
         self.id = id
         self.title = title
         self.author = author
         self.description = description
         self.rating = rating
+        self.published_date = published_date
 
 
 class BookRequest(BaseModel):
@@ -27,6 +29,7 @@ class BookRequest(BaseModel):
     author: str = Field(min_length=3)
     description: str = Field(min_length=1, max_length=100)
     rating: int = Field(gt=-1, lt=6)
+    published_date: int = Field(gt=999, lt=10000)
 
     model_config = {
         "json_schema_extra": {
@@ -35,6 +38,7 @@ class BookRequest(BaseModel):
                 "author": "NewAuthor",
                 "description": "NewDescription",
                 "rating": 5,
+                "published_date": 2012,
             }
         }
     }
@@ -47,6 +51,7 @@ books = [
         author="Andy Weir",
         description="An astronaut becomes stranded on Mars and must use his ingenuity to survive.",
         rating=5,
+        published_date=2011,
     ),
     Book(
         id=2,
@@ -54,6 +59,7 @@ books = [
         author="George Orwell",
         description="A dystopian social science fiction novel exploring totalitarianism and surveillance.",
         rating=4,
+        published_date=1949,
     ),
     Book(
         id=3,
@@ -61,6 +67,7 @@ books = [
         author="J.R.R. Tolkien",
         description="A peace-loving hobbit sets off on an epic adventure to reclaim a stolen dwarf kingdom.",
         rating=5,
+        published_date=1937,
     ),
     Book(
         id=4,
@@ -68,6 +75,7 @@ books = [
         author="James Clear",
         description="A practical guide on how to build good habits and break bad ones.",
         rating=5,
+        published_date=2018,
     ),
     Book(
         id=5,
@@ -75,6 +83,7 @@ books = [
         author="Jane Austen",
         description="A classic romance novel that tackles issues of manners, upbringing, and morality.",
         rating=4,
+        published_date=1813,
     ),
 ]
 
@@ -88,6 +97,17 @@ async def read_book_by_rating(bookRating: int = Query(gt=-1, lt=6)):
     booksToReturn = []
     for book in books:
         if book.rating == bookRating:
+            booksToReturn.append(book)
+    return booksToReturn
+
+
+# This must ALSO be declared BEFORE /books/{bookID} to avoid route conflicts,
+# and it needs a distinct path from read_book_by_rating since both are under /books/.
+@app.get("/books/publish/", status_code=status.HTTP_200_OK)
+async def read_book_by_publish_date(published_date: int = Query(gt=999, lt=10000)):
+    booksToReturn = []
+    for book in books:
+        if book.published_date == published_date:
             booksToReturn.append(book)
     return booksToReturn
 
