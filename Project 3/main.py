@@ -1,7 +1,82 @@
-from fastapi import FastAPI
-from database import engine
-import models
+from fastapi import FastAPI, Depends, HTTPException, Path, status
+from typing import Annotated
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+from models import Todos
+from database import engine, SessionLocal, base
 
 app = FastAPI()
 
-models.base.metadata.create_all(bind=engine)
+# Creates the database tables based on your models
+base.metadata.create_all(bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+db_dependency = Annotated[Session, Depends(get_db)]
+
+
+# Pydantic model updated to include 'priority'
+class TodoRequest(BaseModel):
+    title: str = Field(min_length=3)
+    description: str = Field(min_length=3, max_length=100)
+    priority: int = Field(gt=0, lt=6)  # Assumes priority is between 1 and 5
+    complete: bool = False
+
+
+@app.get("/", status_code=status.HTTP_200_OK)
+async def read_all(db: db_dependency):
+    return db.query(Todos).all()
+
+
+@app.get("/todo/{todoID}", status_code=status.HTTP_200_OK)
+async def read_todo(db: db_dependency, todoID: int = Path(gt=0)):
+    todo_model = db.query(Todos).filter(Todos.id == todoID).first()
+
+    if todo_model is not None:
+        return todo_model
+
+    raise HTTPException(status_code=404, detail="Todo not found")
+
+
+@app.post("/todo", status_code=status.HTTP_201_CREATED)
+async def create_todo(db: db_dependency, todo_request: TodoRequest):
+    todo_model = Todos(**todo_request.model_dump())
+    db.add(todo_model)
+    db.commit()
+
+
+@app.put("/todo/{todoID}", status_code=status.HTTP_204_NO_CONTENT)
+async def update_todo(
+    db: db_dependency, todo_request: TodoRequest, todoID: int = Path(gt=0)
+):
+    todo_model = db.query(Todos).filter(Todos.id == todoID).first()
+
+    if todo_model is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+
+    # Includes 'priority' update
+    todo_model.title = todo_request.title
+    todo_model.description = todo_request.description
+    todo_model.priority = todo_request.priority
+    todo_model.complete = todo_request.complete
+
+    db.add(todo_model)
+    db.commit()
+
+
+@app.delete("/todo/{todoID}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_todo(db: db_dependency, todoID: int = Path(gt=0)):
+    todo_model = db.query(Todos).filter(Todos.id == todoID).first()
+
+    if todo_model is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+
+    db.query(Todos).filter(Todos.id == todoID).delete()
+    db.commit()
